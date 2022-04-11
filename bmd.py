@@ -7,6 +7,7 @@ import binascii
 import enum
 import struct
 import sys
+import threading
 
 from typing import List
 
@@ -183,10 +184,10 @@ def bmd_kbd_auth(challenge):
 
 class SpeedEditorHandler:
 
-	def jog(self, mode : SpeedEditorJogMode, value):
+	def jog(self, mode: SpeedEditorJogMode, value):
 		pass
 
-	def key(self, keys : List[SpeedEditorKey]):
+	def key(self, keys: List[SpeedEditorKey]):
 		"""
 		keys Array of SpeedEditorKey representing what's currently being held down
 		"""
@@ -201,9 +202,8 @@ class SpeedEditorHandler:
 
 
 class SpeedEditor:
-
-	USB_VID			= 0x1edb
-	USB_PID			= 0xda0e
+	USB_VID = 0x1edb
+	USB_PID = 0xda0e
 
 	def __init__(self):
 		self.dev = hid.Device(self.USB_VID, self.USB_PID)
@@ -242,18 +242,22 @@ class SpeedEditor:
 
 		# I "think" what gets returned here is the timeout after which auth
 		# needs to be done again (returns 600 for me which is plausible)
-		return int.from_bytes(data[2:4], 'little')
+		timeout = int.from_bytes(data[2:4], 'little')
+		# reauthenticate 10 seconds before the timeout
+		scheduler = threading.Timer(timeout - 10, self.authenticate)
+		scheduler.start()
+		return timeout
 
-	def set_handler(self, handler : SpeedEditorHandler):
+	def set_handler(self, handler: SpeedEditorHandler):
 		self.handler = handler
 
-	def set_leds(self, leds : SpeedEditorLed):
+	def set_leds(self, leds: SpeedEditorLed):
 		self.dev.write(struct.pack('<BI', 2, leds))
 
-	def set_jog_leds(self, jogleds : SpeedEditorJogLed):
+	def set_jog_leds(self, jogleds: SpeedEditorJogLed):
 		self.dev.write(struct.pack('<BB', 4, jogleds))
 
-	def set_jog_mode(self, jogmode : SpeedEditorJogMode, unknown=255):
+	def set_jog_mode(self, jogmode: SpeedEditorJogMode, unknown=255):
 		self.dev.write(struct.pack('<BBIB', 3, jogmode, 0, unknown))
 
 	def _parse_report_03(self, report):
@@ -262,14 +266,15 @@ class SpeedEditor:
 		# u8   - Jog mode
 		# le32 - Jog value (signed)
 		# u8   - Unknown ?
-		rid, jm, jv, ju = struct.unpack('<BBiB', report)
+		# 6*u8 - Unknown? (skip the remaining bytes)
+		rid, jm, jv, ju = struct.unpack_from('<BBiB', report)
 		return self.handler.jog(SpeedEditorJogMode(jm), jv)
 
 	def _parse_report_04(self, report):
 		# Report ID 04
 		# u8      - Report ID
 		# le16[6] - Array of keys held down
-		keys = [SpeedEditorKey(k) for k in struct.unpack('<6H', report[1:]) if k != 0]
+		keys = [SpeedEditorKey(k) for k in struct.unpack_from('<6H', report[1:]) if k != 0]
 		return self.handler.key(keys)
 
 	def _parse_report_07(self, report):
@@ -277,7 +282,7 @@ class SpeedEditor:
 		# u8 - Report ID
 		# u8 - Charging (1) / Not-charging (0)
 		# u8 - Battery level (0-100)
-		rid, bs, bl = struct.unpack('<BBB', report)
+		rid, bs, bl = struct.unpack_from('<BBB', report)
 		return self.handler.battery(bool(bs), bl)
 
 	def poll(self, timeout=None):

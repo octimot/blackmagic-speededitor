@@ -2,36 +2,36 @@
 
 # Copyright (C) 2021 Sylvain Munaut <tnt@246tNt.com>
 # SPDX-License-Identifier: Apache-2.0
-
+from datetime import datetime
 from typing import List
 
 from bmd import SpeedEditorKey, SpeedEditorLed, SpeedEditorJogLed, SpeedEditorJogMode, SpeedEditorHandler, SpeedEditor
 
-class DemoHandler(SpeedEditorHandler):
 
+class DemoHandler(SpeedEditorHandler):
 	JOG = {
-		SpeedEditorKey.SHTL:	( SpeedEditorJogLed.SHTL, SpeedEditorJogMode.RELATIVE_2 ),
-		SpeedEditorKey.JOG:		( SpeedEditorJogLed.JOG,  SpeedEditorJogMode.ABSOLUTE_CONTINUOUS ),
-		SpeedEditorKey.SCRL:	( SpeedEditorJogLed.SCRL, SpeedEditorJogMode.ABSOLUTE_DEADZERO ),
+		SpeedEditorKey.SHTL: (SpeedEditorJogLed.SHTL, SpeedEditorJogMode.ABSOLUTE_DEADZERO),
+		SpeedEditorKey.JOG: (SpeedEditorJogLed.JOG, SpeedEditorJogMode.RELATIVE_2),
+		SpeedEditorKey.SCRL: (SpeedEditorJogLed.SCRL, SpeedEditorJogMode.RELATIVE_2),
 	}
 
 	def __init__(self, se):
-		self.se   = se
+		self.se = se
 		self.keys = []
 		self.leds = 0
 		self.se.set_leds(self.leds)
-		self._set_jog_mode_for_key(SpeedEditorKey.SHTL)
+		self._set_jog_mode_for_key(SpeedEditorKey.SCRL)
 
-	def _set_jog_mode_for_key(self, key : SpeedEditorKey):
+	def _set_jog_mode_for_key(self, key: SpeedEditorKey):
 		if key not in self.JOG:
 			return
-		self.se.set_jog_leds( self.JOG[key][0] )
-		self.se.set_jog_mode( self.JOG[key][1] )
+		self.se.set_jog_leds(self.JOG[key][0])
+		self.se.set_jog_mode(self.JOG[key][1])
 
-	def jog(self, mode : SpeedEditorJogMode, value):
+	def jog(self, mode: SpeedEditorJogMode, value):
 		print(f"Jog mode {mode:d} : {value:d}")
 
-	def key(self, keys : List[SpeedEditorKey]):
+	def key(self, keys: List[SpeedEditorKey]):
 		# Debug message
 		kl = ', '.join([k.name for k in keys])
 		if not kl:
@@ -50,13 +50,15 @@ class DemoHandler(SpeedEditorHandler):
 
 		self.keys = keys
 
-	def battery(self, charging : bool, level : int):
+	def battery(self, charging: bool, level: int):
 		print(f"Battery {level:d} %{' and charging' if charging else '':s}")
 
 
 if __name__ == '__main__':
+	print(datetime.now())
 	se = SpeedEditor()
-	se.authenticate()
+	timeout = se.authenticate()
+	print(f"Timeout: {timeout:d}")
 	se.set_handler(DemoHandler(se))
 
 	while True:
