@@ -34,6 +34,7 @@ class DemoHandler(SpeedEditorHandler):
 	def jog(self, mode: SpeedEditorJogMode, value):
 		print(f"Jog mode {mode:d} : {value:d}")
 
+		# example
 		# when the jog wheel is turned, we're simulating the press and release of left/right keys
 		if value > 0:
 			self.keyboard.press(Key.right)
