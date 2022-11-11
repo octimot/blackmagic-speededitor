@@ -7,6 +7,7 @@ from typing import List
 
 from bmd import SpeedEditorKey, SpeedEditorLed, SpeedEditorJogLed, SpeedEditorJogMode, SpeedEditorHandler, SpeedEditor
 
+from pynput.keyboard import Key, Controller
 
 class DemoHandler(SpeedEditorHandler):
 	JOG = {
@@ -22,6 +23,8 @@ class DemoHandler(SpeedEditorHandler):
 		self.se.set_leds(self.leds)
 		self._set_jog_mode_for_key(SpeedEditorKey.SCRL)
 
+		self.keyboard = Controller()
+
 	def _set_jog_mode_for_key(self, key: SpeedEditorKey):
 		if key not in self.JOG:
 			return
@@ -30,6 +33,15 @@ class DemoHandler(SpeedEditorHandler):
 
 	def jog(self, mode: SpeedEditorJogMode, value):
 		print(f"Jog mode {mode:d} : {value:d}")
+
+		# when the jog wheel is turned, we're simulating the press and release of left/right keys
+		if value > 0:
+			self.keyboard.press(Key.right)
+			self.keyboard.release(Key.right)
+		else:
+			self.keyboard.press(Key.left)
+			self.keyboard.release(Key.left)
+
 
 	def key(self, keys: List[SpeedEditorKey]):
 		# Debug message
@@ -49,6 +61,14 @@ class DemoHandler(SpeedEditorHandler):
 				self.se.set_leds(self.leds)
 
 		self.keys = keys
+
+		# example
+		# pressing CAM1, will press the '1' key on the keyboard
+		if kl == 'CAM1':
+			self.keyboard.press('1')
+			self.keyboard.release('1')
+
+
 
 	def battery(self, charging: bool, level: int):
 		print(f"Battery {level:d} %{' and charging' if charging else '':s}")
